@@ -6,6 +6,7 @@ pub type X64 = ();
 
 impl Arch for X64 {
     fn idle() -> ! {
+        // FIXME: need lock
         loop {
             unsafe {
                 asm! {
@@ -18,6 +19,7 @@ impl Arch for X64 {
     }
 
     fn get_cpl() -> u8 {
+        // FIXME: need lock
         let cpl: u8;
         unsafe {
             asm! {
@@ -30,3 +32,9 @@ impl Arch for X64 {
         cpl
     }
 }
+
+#[derive(Debug, Clone, Copy)]
+pub struct ArchTask {}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ArchVm {}

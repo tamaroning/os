@@ -16,3 +16,9 @@ pub fn get_cpl() -> u8 {
     #[cfg(target_arch = "x86_64")]
     X64::get_cpl()
 }
+
+#[cfg(target_arch = "x86_64")]
+pub type ArchTask = x64::ArchTask;
+
+#[cfg(target_arch = "x86_64")]
+pub type ArchVm = x64::ArchVm;
