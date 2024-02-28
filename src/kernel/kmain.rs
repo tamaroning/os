@@ -1,9 +1,10 @@
+use crate::kernel::arch;
 use log::info;
 
-use crate::kernel::arch;
-
 pub fn kernel_main() -> ! {
-    info!("Booting the kernel..");
+    info!("kernel_main");
+
+    info!("CPL: {}", arch::get_cpl());
 
     arch::idle();
 }

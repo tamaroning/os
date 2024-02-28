@@ -16,4 +16,17 @@ impl Arch for X64 {
             }
         }
     }
+
+    fn get_cpl() -> u8 {
+        let cpl: u8;
+        unsafe {
+            asm! {
+                "mov ax, cs",
+                "and ax, 3",
+                "mov {0}, al",
+                out(reg_byte) cpl,
+            };
+        }
+        cpl
+    }
 }

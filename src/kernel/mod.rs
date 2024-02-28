@@ -1,4 +1,5 @@
 mod arch;
+mod boot;
 mod kmain;
 
-pub use kmain::kernel_main;
+pub use boot::boot;
