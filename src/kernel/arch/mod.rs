@@ -22,3 +22,7 @@ pub type ArchTask = x64::ArchTask;
 
 #[cfg(target_arch = "x86_64")]
 pub type ArchVm = x64::ArchVm;
+
+pub struct CpuVar {
+    pub arch: ArchCpuVar,
+}

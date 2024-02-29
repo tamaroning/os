@@ -1,22 +1,15 @@
+use super::arch::{ArchTask, ArchVm};
+use crate::build_config::{NUM_TASK_MAX, TICK_HZ};
+use alloc::collections::{BTreeMap, VecDeque};
 use core::cell::UnsafeCell;
 
-use alloc::vec::Vec;
+const TASK_QUANTUM: u64 = 20 * (TICK_HZ / 1000) as u64;
 
-use super::arch::{ArchTask, ArchVm};
-
-const NUM_TASK_MAX: usize = 16;
-
-static mut TASKS: Vec<Task> = Vec::new();
-static mut RUN_QUEUE: Vec<TaskId> = Vec::new();
+static mut TASKS: BTreeMap<TaskId, Task> = BTreeMap::new();
+static mut RUN_QUEUE: VecDeque<TaskId> = VecDeque::new();
 
 pub struct Task {
     inner: UnsafeCell<TaskInner>,
-}
-
-impl Default for Task {
-    fn default() -> Task {
-        Task::new(TaskInner::unused())
-    }
 }
 
 impl Task {
@@ -33,12 +26,20 @@ impl Task {
     pub fn get_mut(&self) -> &mut TaskInner {
         unsafe { &mut *self.inner.get() }
     }
+
+    //pub fn as_ref(&self) -> TaskRef {
+    //    TaskRef { ref_: self as *mut Task }
+    //}
 }
 
 impl Into<Task> for TaskInner {
     fn into(self) -> Task {
         Task::new(self)
     }
+}
+
+pub struct TaskRef {
+    ref_: *mut Task,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -49,7 +50,10 @@ pub struct TaskId {
 impl TaskId {
     fn new() -> TaskId {
         for i in 0..NUM_TASK_MAX {
-            if unsafe { TASKS[i].get_mut().state == TaskState::Unused } {
+            unsafe {
+                if TASKS.contains_key(&TaskId { private: i }) {
+                    continue;
+                }
                 return TaskId { private: i };
             }
         }
@@ -59,7 +63,6 @@ impl TaskId {
 
 #[derive(Debug, PartialEq)]
 enum TaskState {
-    Unused,
     Runnable,
     Blocked,
 }
@@ -88,25 +91,14 @@ impl TaskInner {
             destroyed: false,
         }
     }
-
-    const fn unused() -> TaskInner {
-        TaskInner {
-            arch: ArchTask {},
-            vm: ArchVm {},
-            tid: TaskId { private: 0 },
-            name: "",
-            state: TaskState::Unused,
-            destroyed: false,
-        }
-    }
 }
 
 pub fn task_create(name: &'static str) -> &Task {
     let t = TaskInner::new(name);
     let tid = t.tid;
     unsafe {
-        TASKS[tid.private] = Task::new(t);
-        &TASKS[tid.private]
+        TASKS.insert(tid, Task::new(t));
+        &TASKS.get(&tid).unwrap()
     }
 }
 
@@ -119,7 +111,8 @@ pub fn task_resume(task: &Task) {
     debug_assert!(task.get().state == TaskState::Blocked);
     task.get_mut().state = TaskState::Runnable;
     unsafe {
-        // HACK: break borrowing rules
-        RUN_QUEUE.push(task.get().tid);
+        RUN_QUEUE.push_back(task.get().tid);
     }
 }
+
+pub fn task_switch() {}

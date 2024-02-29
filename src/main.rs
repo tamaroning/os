@@ -3,6 +3,7 @@
 
 extern crate alloc;
 
+mod build_config;
 mod kernel;
 
 use log::info;
