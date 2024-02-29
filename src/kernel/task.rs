@@ -1,45 +1,74 @@
 use super::arch::{ArchTask, ArchVm};
 use crate::build_config::{NUM_TASK_MAX, TICK_HZ};
 use alloc::collections::{BTreeMap, VecDeque};
-use core::cell::UnsafeCell;
+use core::{cell::UnsafeCell, ops::{Deref, DerefMut}};
 
 const TASK_QUANTUM: u64 = 20 * (TICK_HZ / 1000) as u64;
 
 static mut TASKS: BTreeMap<TaskId, Task> = BTreeMap::new();
-static mut RUN_QUEUE: VecDeque<TaskId> = VecDeque::new();
+static mut RUN_QUEUE: VecDeque<TaskRef> = VecDeque::new();
 
+#[derive(Debug, Clone, Copy)]
 pub struct Task {
-    inner: UnsafeCell<TaskInner>,
+    arch: ArchTask,
+    vm: ArchVm,
+    tid: TaskId,
+    name: &'static str,
+    state: TaskState,
+    destroyed: bool,
+    //pager: TaskId, // pager task
+    //timeout: u64,
+    //ref_count: u64,
+    //quantum: u64,
 }
 
 impl Task {
-    pub const fn new(task: TaskInner) -> Task {
+    fn new(name: &'static str) -> Task {
         Task {
-            inner: UnsafeCell::new(task),
+            arch: ArchTask {},
+            vm: ArchVm {},
+            tid: TaskId::new(),
+            name,
+            state: TaskState::Runnable,
+            destroyed: false,
         }
     }
 
-    pub fn get(&self) -> &TaskInner {
-        unsafe { &*self.inner.get() }
+    pub const fn dummy() -> Task {
+        Task {
+            arch: ArchTask {},
+            vm: ArchVm {},
+            tid: TaskId { private: 0 },
+            name: "dummy",
+            state: TaskState::Runnable,
+            destroyed: false,
+        }
     }
 
-    pub fn get_mut(&self) -> &mut TaskInner {
-        unsafe { &mut *self.inner.get() }
+    pub const fn as_ref(&self) -> TaskRef {
+        TaskRef {
+            ref_: self as *const Task as *mut Task,
+        }
     }
-
-    //pub fn as_ref(&self) -> TaskRef {
-    //    TaskRef { ref_: self as *mut Task }
-    //}
 }
 
-impl Into<Task> for TaskInner {
-    fn into(self) -> Task {
-        Task::new(self)
-    }
-}
-
+#[derive(Debug, Clone, Copy)]
 pub struct TaskRef {
     ref_: *mut Task,
+}
+
+impl Deref for TaskRef {
+    type Target = Task;
+
+    fn deref(&self) -> &Task {
+        unsafe { &*self.ref_ }
+    }
+}
+
+impl DerefMut for TaskRef {
+    fn deref_mut(&mut self) -> &mut Task {
+        unsafe { &mut *self.ref_ }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -61,58 +90,36 @@ impl TaskId {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 enum TaskState {
     Runnable,
     Blocked,
 }
 
-pub struct TaskInner {
-    arch: ArchTask,
-    vm: ArchVm,
-    tid: TaskId,
-    name: &'static str,
-    state: TaskState,
-    destroyed: bool,
-    //pager: TaskId, // pager task
-    //timeout: u64,
-    //ref_count: u64,
-    //quantum: u64,
-}
-
-impl TaskInner {
-    fn new(name: &'static str) -> TaskInner {
-        TaskInner {
-            arch: ArchTask {},
-            vm: ArchVm {},
-            tid: TaskId::new(),
-            name,
-            state: TaskState::Runnable,
-            destroyed: false,
-        }
-    }
-}
-
-pub fn task_create(name: &'static str) -> &Task {
-    let t = TaskInner::new(name);
+pub fn task_create(name: &'static str) -> TaskRef {
+    let t = Task::new(name);
     let tid = t.tid;
     unsafe {
-        TASKS.insert(tid, Task::new(t));
-        &TASKS.get(&tid).unwrap()
+        TASKS.insert(tid, t);
+        TASKS.get(&tid).unwrap().as_ref()
     }
 }
 
-pub fn task_block(task: &Task) {
-    debug_assert!(task.get().state == TaskState::Runnable);
-    task.get_mut().state = TaskState::Blocked;
+pub fn task_block(task: &mut Task) {
+    debug_assert!(task.state == TaskState::Runnable);
+    task.state = TaskState::Blocked;
 }
 
-pub fn task_resume(task: &Task) {
-    debug_assert!(task.get().state == TaskState::Blocked);
-    task.get_mut().state = TaskState::Runnable;
+pub fn task_resume(task: &mut Task) {
+    debug_assert!(task.state == TaskState::Blocked);
+    task.state = TaskState::Runnable;
     unsafe {
-        RUN_QUEUE.push_back(task.get().tid);
+        RUN_QUEUE.push_back(task.as_ref());
     }
 }
 
 pub fn task_switch() {}
+
+pub fn task_init_per_cpu() {
+    // https://github.com/nuta/microkernel-book/blob/2a49c4a932208ae22c0727cdd2047bf277bf447b/kernel/task.c#L322
+}
