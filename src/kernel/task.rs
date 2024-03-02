@@ -1,7 +1,7 @@
 use super::arch::{ArchTask, ArchVm};
 use crate::build_config::{NUM_TASK_MAX, TICK_HZ};
 use alloc::collections::{BTreeMap, VecDeque};
-use core::{cell::UnsafeCell, ops::{Deref, DerefMut}};
+use core::ops::{Deref, DerefMut};
 
 const TASK_QUANTUM: u64 = 20 * (TICK_HZ / 1000) as u64;
 

@@ -15,9 +15,9 @@ pub fn kernel_main() -> ! {
 
 pub fn mp_kernel_main() -> ! {
     // https://github.com/nuta/resea/blob/3dbbcd9403abff70afb9df4573c8045e2146c6f7/kernel/boot.c#L151
-    info!("Booting CPU");
-    arch::arch_init_per_cpu();
-    task::task_init_per_cpu();
+    //info!("Booting CPU#{}", arch::mp_self());
+    //arch::arch_init_per_cpu();
+    //task::task_init_per_cpu();
     
     //let cpuvar = arch::get_arch_cpuvar_mut();
     //info!("Booted CPU#{}", cpuvar.id);

@@ -11,6 +11,7 @@ pub trait Arch {
     fn get_cpl() -> u8;
     fn get_arch_cpuvar_mut() -> &'static mut CpuVar;
     fn arch_init_per_cpu() -> ();
+    fn mp_self() -> u32;
 }
 
 pub fn idle() -> ! {
@@ -31,6 +32,11 @@ pub fn get_arch_cpuvar_mut() -> &'static mut CpuVar {
 pub fn arch_init_per_cpu() {
     #[cfg(target_arch = "x86_64")]
     X64::arch_init_per_cpu();
+}
+
+pub fn mp_self() -> u32 {
+    #[cfg(target_arch = "x86_64")]
+    X64::mp_self()
 }
 
 #[cfg(target_arch = "x86_64")]

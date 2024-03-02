@@ -2,6 +2,12 @@ use core::arch::asm;
 
 use super::Arch;
 
+const KERNEL_BASE_ADDR: u64 = 0xffff800000000000;
+
+fn paddr2ptr(paddr: u64) -> *mut u64 {
+    (KERNEL_BASE_ADDR + paddr) as *mut u64
+}
+
 pub type X64 = ();
 
 impl Arch for X64 {
@@ -49,6 +55,12 @@ impl Arch for X64 {
         let cpuvar = Self::get_arch_cpuvar_mut();
         cpuvar.id = 0;
         cpuvar.online = true;
+    }
+
+    fn mp_self() -> u32 {
+        // FIXME:
+        // https://github.com/nuta/resea/blob/3dbbcd9403abff70afb9df4573c8045e2146c6f7/kernel/arch/x64/arch.h#L67
+        (unsafe { *(paddr2ptr(0xfee00020) as *const u32) } >> 24)
     }
 }
 
